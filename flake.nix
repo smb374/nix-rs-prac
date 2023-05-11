@@ -11,7 +11,7 @@
     mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
   };
 
-  outputs = inputs@{ flake-parts, ... }:
+  outputs = inputs@{ flake-parts, nix2container, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.devenv.flakeModule
@@ -23,12 +23,11 @@
       let
         crateName = "nix-rs-prac";
         crateOutputs = config.nci.outputs.${crateName};
+        n2cPkgs = nix2container.packages.${system};
       in {
         ### nci
         nci.projects.${crateName}.relPath = "";
-        nci.crates.${crateName} = {
-          export = true;
-        };
+        nci.crates.${crateName}.export = true;
         ### devenv
         # Per-system attributes can be defined here. The self' and inputs'
         # module parameters provide easy access to attributes of the same
@@ -36,6 +35,12 @@
 
         # Equivalent to  inputs'.nixpkgs.legacyPackages.hello;
         packages.default = crateOutputs.packages.release;
+        packages.image = n2cPkgs.nix2container.buildImage {
+          name = "nix-rs-prac";
+          config = {
+            entrypoint = ["${crateOutputs.packages.release}/bin/nix-rs-prac"];
+          };
+        };
 
         devenv.shells.default = {
           name = "my-project";
